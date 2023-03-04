@@ -547,7 +547,7 @@ void x_rect_to_coords(int nrects, const rect_t *rects, coord_t image_dst,
 // TODO(yshui) make use of reg_visible
 void gl_compose(backend_t *base, void *image_data, coord_t image_dst, void *mask,
                 coord_t mask_dst, const region_t *reg_tgt,
-                const region_t *reg_visible attr_unused) {
+                const region_t *reg_visible attr_unused, bool lerp) {
 	auto gd = (struct gl_data *)base;
 	struct backend_image *img = image_data;
 	auto inner = (struct gl_texture *)img->inner;
@@ -573,6 +573,14 @@ void gl_compose(backend_t *base, void *image_data, coord_t image_dst, void *mask
 	coord_t mask_offset = {.x = mask_dst.x - image_dst.x, .y = mask_dst.y - image_dst.y};
 	x_rect_to_coords(nrects, rects, image_dst, inner->height, inner->height,
 	                 gd->height, inner->y_inverted, coord, indices);
+
+	if (lerp) {
+		for (unsigned int i = 2; i < 16; i+=4) {
+			coord[i+0] = lerp_range(0, mask_offset.x, 0, inner->width, coord[i+0]);
+			coord[i+1] = lerp_range(0, mask_offset.y, 0, inner->height, coord[i+1]);
+		}
+	}
+
 	_gl_compose(base, img, gd->back_fbo, mask, mask_offset, coord, indices, nrects);
 
 	free(indices);

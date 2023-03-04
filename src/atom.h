@@ -3,8 +3,8 @@
 
 #include <xcb/xcb.h>
 
-#include "meta.h"
 #include "cache.h"
+#include "meta.h"
 
 // clang-format off
 // Splitted into 2 lists because of the limitation of our macros
