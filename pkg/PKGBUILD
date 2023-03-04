@@ -1,0 +1,57 @@
+# Maintainer: Alexander F. Rødseth <xyproto@archlinux.org>
+# Contributor: WorMzy Tykashi <wormzy.tykashi@gmail.com>
+# Contributor: OK100 <ok100@lavabit.com>
+# Contributor: Valère Monseur <valere.monseur@ymail.com>
+
+pkgname=picom
+pkgver=10.2
+pkgrel=1
+pkgdesc='X compositor that may fix tearing issues'
+arch=(x86_64)
+url='https://github.com/fdev31/picom'
+license=(MIT MPL)
+makedepends=(asciidoc git mesa meson ninja setconf uthash)
+depends=(hicolor-icon-theme libconfig libdbus libev libgl pcre pixman
+         xcb-util-image xcb-util-renderutil)
+backup=(etc/xdg/picom.conf)
+optdepends=('dbus:          for controlling picom via D-Bus'
+            'python:        for running picom-convgen.py'
+            'xorg-xprop:    for picom-trans'
+            'xorg-xwininfo: for picom-trans')
+source=("git+$url?#branch=next") # tag: v10.2
+b2sums=('SKIP')
+
+prepare() {
+  cd $pkgname
+  # More subtle transparency in the default settings
+  setconf picom.sample.conf 'frame-opacity=0.9;'
+  setconf picom.sample.conf 'inactive-opacity=0.95;'
+  # Improve performance (recommended option)
+  setconf -u picom.sample.conf 'glx-no-stencil=true;'
+}
+
+build() {
+  mkdir -p build
+  arch-meson --buildtype=release -D with_docs=true build $pkgname
+  ninja -v -C build
+}
+
+check() {
+  ninja -C build test
+}
+
+package() {
+  DESTDIR="$pkgdir" ninja -C build install
+
+  # Default and example configuration
+  install -Dm644 $pkgname/picom.sample.conf "$pkgdir/etc/xdg/picom.conf"
+  install -Dm644 $pkgname/picom.sample.conf "$pkgdir/usr/share/doc/picom/picom.conf.example"
+
+  # Man pages and licenses
+  install -Dm644 build/man/picom.1 "$pkgdir/usr/share/man/man1/picom.1"
+  install -Dm644 build/man/picom-trans.1 "$pkgdir/usr/share/man/man1/picom-trans.1"
+  install -Dm644 $pkgname/LICENSES/MIT "$pkgdir/usr/share/licenses/$pkgname/MIT"
+  install -Dm644 $pkgname/LICENSES/MPL-2.0 "$pkgdir/usr/share/licenses/$pkgname/MPL-2.0"
+}
+
+# getver: github.com/yshui/picom/releases
