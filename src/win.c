@@ -591,7 +591,7 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		break;
 	case OPEN_WINDOW_ANIMATION_SLIDE_OUT:
 		w->animation_dest_center_x = w->pending_g.x + w->pending_g.width * 0.5;
-		w->animation_dest_center_y = w->pending_g.y;
+		w->animation_dest_center_y = w->pending_g.y + w->heightb;
 		w->animation_dest_w = w->pending_g.width;
 		w->animation_dest_h = w->pending_g.height;
 		break;
