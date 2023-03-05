@@ -503,17 +503,15 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 	}
 	static double *anim_x, *anim_y, *anim_w, *anim_h;
 	enum open_window_animation animation;
-	if (ps->o.wintype_option[w->window_type].animation != OPEN_WINDOW_ANIMATION_INVALID) {
-		animation = ps->o.wintype_option[w->window_type].animation;
-	} else
-		animation = OPEN_WINDOW_ANIMATION_INVALID;
-
-	anim_x = &w->animation_center_x, anim_y = &w->animation_center_y;
-	anim_w = &w->animation_w, anim_h = &w->animation_h;
 
 	if (w->animation_is_tag) {
 		animation = OPEN_WINDOW_ANIMATION_NONE;
+	} else {
+		animation = ps->o.wintype_option[w->window_type].animation;
 	}
+
+	anim_x = &w->animation_center_x, anim_y = &w->animation_center_y;
+	anim_w = &w->animation_w, anim_h = &w->animation_h;
 
 	if (animation == OPEN_WINDOW_ANIMATION_INVALID) {
 		if (is_transient(ps, w)) {
