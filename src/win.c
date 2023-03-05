@@ -504,7 +504,7 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 	static double *anim_x, *anim_y, *anim_w, *anim_h;
 	enum open_window_animation animation;
 	if (ps->o.wintype_option[w->window_type].animation != OPEN_WINDOW_ANIMATION_INVALID &&
-	    !w->dwm_mask) {
+	    !w->animation_flags) {
 		animation = ps->o.wintype_option[w->window_type].animation;
 	} else
 		animation = ps->o.animation_for_open_window;
@@ -519,12 +519,12 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 	} else if (is_transient(ps, w)) {
 		animation = ps->o.animation_for_transient_window;
 	} else {
-		if (w->dwm_mask & ANIM_UNMAP) {
+		if (w->animation_flags & ANIM_UNMAP) {
 			animation = ps->o.animation_for_unmap_window;
 		}
 	}
 
-	if (w->dwm_mask & ANIM_UNMAP) {
+	if (w->animation_flags & ANIM_UNMAP) {
 		anim_x = &w->animation_dest_center_x, anim_y = &w->animation_dest_center_y;
 		anim_w = &w->animation_dest_w, anim_h = &w->animation_dest_h;
 	}
@@ -603,13 +603,8 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		break;
 	case OPEN_WINDOW_ANIMATION_ZOOM:        // Zoom-in the image, without changing its
 	                                        // location
-		if (w->dwm_mask & ANIM_SPECIAL_MINIMIZE) {
-			*anim_x = w->g.x + w->g.width * 0.5;
-			*anim_y = w->g.y + w->g.height * 0.5;
-		} else {
-			*anim_x = w->pending_g.x + w->pending_g.width * 0.5;
-			*anim_y = w->pending_g.y + w->pending_g.height * 0.5;
-		}
+		*anim_x = w->pending_g.x + w->pending_g.width * 0.5;
+		*anim_y = w->pending_g.y + w->pending_g.height * 0.5;
 		*anim_w = 0;
 		*anim_h = 0;
 		break;
@@ -620,26 +615,17 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		*anim_h = 0;
 		break;
 	case OPEN_WINDOW_ANIMATION_SQUEEZE:
-		if (w->dwm_mask & ANIM_PREV_TAG) {
-			*anim_h = 0;
-		} else {
-			*anim_x = w->pending_g.x + w->pending_g.width * 0.5;
-			*anim_y = w->pending_g.y + w->pending_g.height * 0.5;
-			*anim_w = w->pending_g.width;
-			*anim_h = 0;
-		}
+		*anim_x = w->pending_g.x + w->pending_g.width * 0.5;
+		*anim_y = w->pending_g.y + w->pending_g.height * 0.5;
+		*anim_w = w->pending_g.width;
+		*anim_h = 0;
 		break;
 	case OPEN_WINDOW_ANIMATION_SQUEEZE_BOTTOM:
-		if (w->dwm_mask & ANIM_PREV_TAG) {
-			*anim_y = w->g.y + w->g.height;
-			*anim_h = 0;
-		} else {
-			w->animation_center_x = w->pending_g.x + w->pending_g.width * 0.5;
-			w->animation_center_y = w->pending_g.y + w->pending_g.height;
-			w->animation_w = w->pending_g.width;
-			*anim_h = 0;
-			*anim_y = w->pending_g.y + w->pending_g.height;
-		}
+		w->animation_center_x = w->pending_g.x + w->pending_g.width * 0.5;
+		w->animation_center_y = w->pending_g.y + w->pending_g.height;
+		w->animation_w = w->pending_g.width;
+		*anim_h = 0;
+		*anim_y = w->pending_g.y + w->pending_g.height;
 		break;
 	case OPEN_WINDOW_ANIMATION_INVALID: assert(false); break;
 	}
@@ -688,7 +674,7 @@ void win_process_update_flags(session_t *ps, struct managed_win *w) {
 		// Determine if a window should animate
 		if (win_should_animate(ps, w)) {
 			win_update_bounding_shape(ps, w);
-			if (!was_visible || w->dwm_mask) {
+			if (!was_visible || w->animation_flags) {
 				// Set window-open animation
 				init_animation(ps, w);
 
@@ -715,7 +701,7 @@ void win_process_update_flags(session_t *ps, struct managed_win *w) {
 				w->animation_dest_h = w->pending_g.height;
 			}
 
-			CLEAR_MASK(w->dwm_mask)
+			CLEAR_MASK(w->animation_flags)
 			w->g.border_width = w->pending_g.border_width;
 			double x_dist = w->animation_dest_center_x - w->animation_center_x;
 			double y_dist = w->animation_dest_center_y - w->animation_center_y;
@@ -2637,7 +2623,7 @@ bool destroy_win_start(session_t *ps, struct win *w) {
 }
 
 void unmap_win_start(session_t *ps, struct managed_win *w) {
-	w->dwm_mask |= ANIM_UNMAP;
+	w->animation_flags |= ANIM_UNMAP;
 	assert(w);
 	assert(w->base.managed);
 	assert(w->a._class != XCB_WINDOW_CLASS_INPUT_ONLY);
@@ -2676,7 +2662,7 @@ void unmap_win_start(session_t *ps, struct managed_win *w) {
 
 	if (ps->o.animations && ps->o.animation_for_unmap_window != OPEN_WINDOW_ANIMATION_NONE &&
 	    ps->o.wintype_option[w->window_type].animation) {
-		w->dwm_mask = ANIM_UNMAP;
+		w->animation_flags = ANIM_UNMAP;
 		init_animation(ps, w);
 
 		double x_dist = w->animation_dest_center_x - w->animation_center_x;
@@ -2776,7 +2762,7 @@ void win_update_monitor(int nmons, region_t *mons, struct managed_win *mw) {
 void map_win_start(session_t *ps, struct managed_win *w) {
 	assert(ps->server_grabbed);
 	assert(w);
-	w->dwm_mask = 0;
+	w->animation_flags = 0;
 
 	// Don't care about window mapping if it's an InputOnly window
 	// Also, try avoiding mapping a window twice

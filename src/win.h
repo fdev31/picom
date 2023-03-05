@@ -101,11 +101,8 @@ struct win_geometry {
 };
 
 enum {
-	// dwm_mask
-	ANIM_PREV_TAG = 1,
-	ANIM_NEXT_TAG = (1 << 1),
-	ANIM_UNMAP = (1 << 2),
-	ANIM_SPECIAL_MINIMIZE = (1 << 3),
+	// animation_flags
+	ANIM_UNMAP = 1,
 	// animation_is_tag
 	ANIM_IN_TAG = 1,
 	ANIM_SLOW = (1 << 1),
@@ -172,7 +169,7 @@ struct managed_win {
 	/// window mode of the windows above. DOES NOT INCLUDE the body of THIS WINDOW.
 	/// NULL means reg_ignore has not been calculated for this window.
 	/// 1 = tag prev  , 2 = tag next, 4 = unmap
-	uint32_t dwm_mask;
+	uint32_t animation_flags;
 	rc_region_t *reg_ignore;
 	/// Whether the reg_ignore of all windows beneath this window are valid
 	bool reg_ignore_valid;

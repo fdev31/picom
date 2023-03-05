@@ -690,7 +690,7 @@ paint_preprocess(session_t *ps, bool *fade_running, bool *animation_running) {
 		if (ps->o.animations && !isnan(w->animation_progress) &&
 		    w->animation_progress <= 0.999999999 &&
 		    ps->o.wintype_option[w->window_type].animation != 0 &&
-		    (win_is_mapped_in_x(w) || w->dwm_mask & ANIM_UNMAP)) {
+		    (win_is_mapped_in_x(w) || w->animation_flags & ANIM_UNMAP)) {
 			double neg_displacement_x =
 			    w->animation_dest_center_x - w->animation_center_x;
 			double neg_displacement_y =
