@@ -503,8 +503,7 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 	}
 	static double *anim_x, *anim_y, *anim_w, *anim_h;
 	enum open_window_animation animation;
-	if (ps->o.wintype_option[w->window_type].animation != OPEN_WINDOW_ANIMATION_INVALID &&
-	    !w->animation_flags) {
+	if (ps->o.wintype_option[w->window_type].animation != OPEN_WINDOW_ANIMATION_INVALID) {
 		animation = ps->o.wintype_option[w->window_type].animation;
 	} else
 		animation = OPEN_WINDOW_ANIMATION_INVALID;
