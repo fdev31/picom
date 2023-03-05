@@ -512,7 +512,11 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 	anim_x = &w->animation_center_x, anim_y = &w->animation_center_y;
 	anim_w = &w->animation_w, anim_h = &w->animation_h;
 
-	if (is_transient(ps, w)) {
+	if (w->window_type == WINTYPE_NOTIFICATION) {
+		animation = ps->o.animation_for_notification_window;
+	} else if (w->window_type == WINTYPE_DIALOG) {
+		animation = ps->o.animation_for_dialog_window;
+	} else if (is_transient(ps, w)) {
 		animation = ps->o.animation_for_transient_window;
 	} else {
 		if (w->dwm_mask & ANIM_UNMAP) {

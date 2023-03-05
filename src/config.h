@@ -199,6 +199,10 @@ typedef struct options {
 	enum open_window_animation animation_for_open_window;
 	/// Which animation to run when opening a transient window
 	enum open_window_animation animation_for_transient_window;
+	/// Which animation to run when opening a notification window
+	enum open_window_animation animation_for_dialog_window;
+	/// Which animation to run when opening a notification window
+	enum open_window_animation animation_for_notification_window;
 	/// Which animation to run when unmapping a window
 	enum open_window_animation animation_for_unmap_window;
 	/// Which animation to run when swapping to new tag

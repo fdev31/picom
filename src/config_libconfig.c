@@ -497,6 +497,24 @@ char *parse_config_libconfig(options_t *opt, const char *config_file, bool *shad
 		}
 		opt->animation_for_transient_window = animation;
 	}
+	// --animation-for-notification-window
+	if (config_lookup_string(&cfg, "animation-for-notification-window", &sval)) {
+		enum open_window_animation animation = parse_open_window_animation(sval);
+		if (animation >= OPEN_WINDOW_ANIMATION_INVALID) {
+			log_fatal("Invalid notification-window animation %s", sval);
+			goto err;
+		}
+		opt->animation_for_notification_window = animation;
+	}
+	// --animation-for-dialog-window
+	if (config_lookup_string(&cfg, "animation-for-dialog-window", &sval)) {
+		enum open_window_animation animation = parse_open_window_animation(sval);
+		if (animation >= OPEN_WINDOW_ANIMATION_INVALID) {
+			log_fatal("Invalid dialog-window animation %s", sval);
+			goto err;
+		}
+		opt->animation_for_dialog_window = animation;
+	}
 	// --animation-for-unmap-window
 	if (config_lookup_string(&cfg, "animation-for-unmap-window", &sval)) {
 		enum open_window_animation animation = parse_open_window_animation(sval);
