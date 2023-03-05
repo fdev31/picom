@@ -507,24 +507,28 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 	    !w->animation_flags) {
 		animation = ps->o.wintype_option[w->window_type].animation;
 	} else
-		animation = ps->o.animation_for_open_window;
+		animation = OPEN_WINDOW_ANIMATION_INVALID;
 
 	anim_x = &w->animation_center_x, anim_y = &w->animation_center_y;
 	anim_w = &w->animation_w, anim_h = &w->animation_h;
 
-	if (w->window_type == WINTYPE_NOTIFICATION) {
-		animation = ps->o.animation_for_notification_window;
-	} else if (w->window_type == WINTYPE_DIALOG) {
-		animation = ps->o.animation_for_dialog_window;
-	} else if (is_transient(ps, w)) {
-		animation = ps->o.animation_for_transient_window;
-	} else {
-		if (w->animation_flags & ANIM_UNMAP) {
-			animation = ps->o.animation_for_unmap_window;
+	if (w->animation_is_tag) {
+		animation = OPEN_WINDOW_ANIMATION_NONE;
+	}
+
+	if (animation == OPEN_WINDOW_ANIMATION_INVALID) {
+		if (is_transient(ps, w)) {
+			animation = ps->o.animation_for_transient_window;
+		} else {
+			if (w->animation_flags & ANIM_UNMAP) {
+				animation = ps->o.animation_for_unmap_window;
+			} else {
+				animation = ps->o.animation_for_open_window;
+			}
 		}
 	}
 
-	if (w->animation_flags & ANIM_UNMAP) {
+	if (w->animation_flags & ANIM_UNMAP && !w->animation_is_tag) {
 		anim_x = &w->animation_dest_center_x, anim_y = &w->animation_dest_center_y;
 		anim_w = &w->animation_dest_w, anim_h = &w->animation_dest_h;
 	}

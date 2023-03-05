@@ -189,8 +189,6 @@ static const struct picom_option picom_options[] = {
     {"animation-clamping"          , no_argument      , 809, NULL          , "Enable/disable animation clamping. Disabling increases performance"},
     {"animation-for-open-window"   , required_argument, 810, NULL          , "Set animation for opening window (Check sample.conf for options)."},
     {"animation-for-transient-window", required_argument, 811, NULL        , "Set animation for transient (child) windows."},
-    {"animation-for-notification-window", required_argument, 813, NULL        , "Set animation for notification windows."},
-    {"animation-for-dialog-window", required_argument, 814, NULL        , "Set animation for dialog windows."},
 };
 // clang-format on
 
@@ -792,26 +790,6 @@ bool get_cfg(options_t *opt, int argc, char *const *argv, bool shadow_enable,
 		case 812: {
 			// --animation-exclude
 			condlst_add(&opt->animation_blacklist, optarg);
-			break;
-		}
-		case 813: {
-			// --animation-for-notification-window
-			enum open_window_animation animation = parse_open_window_animation(optarg);
-			if (animation >= OPEN_WINDOW_ANIMATION_INVALID) {
-				log_warn("Invalid transient-window animation %s, ignoring.", optarg);
-			} else {
-				opt->animation_for_notification_window = animation;
-			}
-			break;
-		}
-		case 814: {
-			// --animation-for-dialog-window
-			enum open_window_animation animation = parse_open_window_animation(optarg);
-			if (animation >= OPEN_WINDOW_ANIMATION_INVALID) {
-				log_warn("Invalid transient-window animation %s, ignoring.", optarg);
-			} else {
-				opt->animation_for_dialog_window = animation;
-			}
 			break;
 		}
 		default: usage(argv[0], 1); break;
