@@ -483,7 +483,7 @@ static void win_update_properties(session_t *ps, struct managed_win *w) {
 }
 
 static void init_animation(session_t *ps, struct managed_win *w) {
-	CLEAR_MASK(w->animation_is_tag)
+	CLEAR_MASK(w->in_desktop_animation)
 	static int32_t randr_mon_center_x, randr_mon_center_y;
 	if (w->randr_monitor == -1) {
 		win_update_monitor(ps->randr_nmonitors, ps->randr_monitor_regs, w);
@@ -692,7 +692,7 @@ void win_process_update_flags(session_t *ps, struct managed_win *w) {
 				w->g.height = (uint16_t)round(w->animation_h);
 
 			} else {
-				w->animation_is_tag = ANIM_IN_TAG;
+				w->in_desktop_animation = ANIM_IN_TAG;
 				w->animation_dest_center_x =
 				    w->pending_g.x + w->pending_g.width * 0.5;
 				w->animation_dest_center_y =
@@ -1049,7 +1049,7 @@ double win_calc_opacity_target(session_t *ps, const struct managed_win *w) {
 	if (w->state == WSTATE_UNMAPPING || w->state == WSTATE_DESTROYING) {
 		return 0;
 	}
-	if ((w->state == WSTATE_FADING && (w->animation_is_tag & ANIM_FADE))) {
+	if ((w->state == WSTATE_FADING && (w->in_desktop_animation & ANIM_FADE))) {
 		return 0;
 	}
 

@@ -103,7 +103,7 @@ struct win_geometry {
 enum {
 	// animation_flags
 	ANIM_UNMAP = 1,
-	// animation_is_tag
+	// animation_in_tag
 	ANIM_IN_TAG = 1,
 	ANIM_SLOW = (1 << 1),
 	ANIM_FAST = (1 << 2),
@@ -204,7 +204,7 @@ struct managed_win {
 	/// 0: no tag change
 	/// 1: normal tag change animation
 	/// 2: tag change animation that effects window size
-	uint16_t animation_is_tag;
+	uint16_t in_desktop_animation;
 
 	// Client window related members
 	/// ID of the top-level client window of the window.

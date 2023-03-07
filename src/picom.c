@@ -698,15 +698,15 @@ paint_preprocess(session_t *ps, bool *fade_running, bool *animation_running) {
 			double neg_displacement_w = w->animation_dest_w - w->animation_w;
 			double neg_displacement_h = w->animation_dest_h - w->animation_h;
 			double animation_stiffness = ps->o.animation_stiffness;
-			if (!(w->animation_is_tag & ANIM_IN_TAG)) {
-				if (w->animation_is_tag & ANIM_SLOW)
+			if (!(w->in_desktop_animation & ANIM_IN_TAG)) {
+				if (w->in_desktop_animation & ANIM_SLOW)
 					animation_stiffness =
 					    ps->o.animation_stiffness_tag_change;
-				else if (w->animation_is_tag & ANIM_FAST)
+				else if (w->in_desktop_animation & ANIM_FAST)
 					animation_stiffness =
 					    ps->o.animation_stiffness_tag_change * 1.5;
 			}
-			if (w->state == WSTATE_FADING && !(w->animation_is_tag & ANIM_FADE))
+			if (w->state == WSTATE_FADING && !(w->in_desktop_animation & ANIM_FADE))
 				w->opacity_target = win_calc_opacity_target(ps, w);
 			double acceleration_x =
 			    (animation_stiffness * neg_displacement_x -
@@ -810,8 +810,8 @@ paint_preprocess(session_t *ps, bool *fade_running, bool *animation_running) {
 			w->g.width = (uint16_t)new_animation_w;
 			w->g.height = (uint16_t)new_animation_h;
 
-			if (w->animation_is_tag > ANIM_IN_TAG &&
-			    (((w->animation_is_tag & ANIM_FADE) && w->opacity_target == w->opacity) ||
+			if (w->in_desktop_animation > ANIM_IN_TAG &&
+			    (((w->in_desktop_animation & ANIM_FADE) && w->opacity_target == w->opacity) ||
 			     ((w->g.width == 0 || w->g.height == 0) &&
 			      (w->animation_dest_w == 0 || w->animation_dest_h == 0)))) {
 				w->g.x = w->pending_g.x;
