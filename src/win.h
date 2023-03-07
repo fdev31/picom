@@ -103,7 +103,7 @@ struct win_geometry {
 enum {
 	// animation_flags
 	ANIM_UNMAP = 1,
-	// animation_in_tag
+	// in_desktop_animation
 	ANIM_IN_TAG = 1,
 	ANIM_SLOW = (1 << 1),
 	ANIM_FAST = (1 << 2),
@@ -482,6 +482,8 @@ bool attr_pure win_is_region_ignore_valid(session_t *ps, const struct managed_wi
 
 /// Whether a given window is mapped on the X server side
 bool win_is_mapped_in_x(const struct managed_win *w);
+
+int get_cardinal_prop(session_t *ps, xcb_window_t wid, const char *atom);
 
 // Find the managed window immediately below `w` in the window stack
 struct managed_win *attr_pure win_stack_find_next_managed(const session_t *ps,

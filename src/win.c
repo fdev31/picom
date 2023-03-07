@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2011-2013, Christopher Jeffrey
 // Copyright (c) 2013 Richard Grenville <pyxlcy@gmail.com>
+int desktop_switch = 0; // TODO: move it in session
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -181,12 +182,6 @@ static inline void group_on_factor_change(session_t *ps, xcb_window_t leader) {
 	}
 }
 
-static inline bool dump_window(const struct managed_win *w) {
-	log_info("Win %s", w->name);
-	log_info("%d %d %d %Ld %x", w->heightb, w->widthb, w->mode, w->stale_props,
-	         w->prev_trans);
-}
-
 static inline bool is_transient(session_t *ps, const struct managed_win *w) {
 	return (w->window_type < WINTYPE_NORMAL || w->window_type > WINTYPE_NORMAL) ||
 	       ((w->window_type != WINTYPE_TOOLTIP) &&
@@ -284,6 +279,8 @@ void win_get_region_frame_local(const struct managed_win *w, region_t *res) {
 }
 
 gen_by_val(win_get_region_frame_local);
+
+bool get_mouse_position(session_t *ps, int16_t *x, int16_t *y);
 
 /**
  * Add a window to damaged area.
@@ -483,6 +480,7 @@ static void win_update_properties(session_t *ps, struct managed_win *w) {
 }
 
 static void init_animation(session_t *ps, struct managed_win *w) {
+	static int previous_desk_nr = -1;
 	CLEAR_MASK(w->in_desktop_animation)
 	static int32_t randr_mon_center_x, randr_mon_center_y;
 	if (w->randr_monitor == -1) {
@@ -503,19 +501,24 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 	}
 	static double *anim_x, *anim_y, *anim_w, *anim_h;
 	enum open_window_animation animation;
+	bool transient_window = is_transient(ps, w);
 
-	if (w->animation_is_tag) {
+	if (w->in_desktop_animation) {
 		animation = OPEN_WINDOW_ANIMATION_NONE;
 	} else {
 		animation = ps->o.wintype_option[w->window_type].animation;
 	}
 
-	anim_x = &w->animation_center_x, anim_y = &w->animation_center_y;
-	anim_w = &w->animation_w, anim_h = &w->animation_h;
+	/* START OF ANIMATION CODE (make it optional) */
 
 	if (animation == OPEN_WINDOW_ANIMATION_INVALID) {
-		if (is_transient(ps, w)) {
-			animation = ps->o.animation_for_transient_window;
+		if (transient_window) {
+			int16_t mx, my;
+			animation = OPEN_WINDOW_ANIMATION_SLIDE_DOWN; //ps->o.animation_for_transient_window;
+			if (get_mouse_position(ps, &mx, &my)) {
+				if (my >= (randr_mon_center_y*2) - w->pending_g.height)
+					animation = OPEN_WINDOW_ANIMATION_SLIDE_UP;
+			}
 		} else {
 			if (w->animation_flags & ANIM_UNMAP) {
 				animation = ps->o.animation_for_unmap_window;
@@ -524,12 +527,51 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 			}
 		}
 	}
-
-	if (w->animation_flags & ANIM_UNMAP && !w->animation_is_tag) {
+	 // set target pointer to destination instead
+	if (w->animation_flags & ANIM_UNMAP) {
 		anim_x = &w->animation_dest_center_x, anim_y = &w->animation_dest_center_y;
 		anim_w = &w->animation_dest_w, anim_h = &w->animation_dest_h;
+	} else {
+		anim_x = &w->animation_center_x, anim_y = &w->animation_center_y;
+		anim_w = &w->animation_w, anim_h = &w->animation_h;
 	}
 
+	/* TODO: make this optional (slide-animation: true) */
+
+	const int desktop_count = 10;        // TODO: use _NET_NUMBER_OF_DESKTOPS-configItem
+	int client_desktop_nr = get_cardinal_prop(ps, w->client_win, "_NET_WM_DESKTOP");
+
+	if (client_desktop_nr >= 0 && !transient_window &&
+	    w->window_type == WINTYPE_NORMAL && !w->in_desktop_animation) {
+		int desktop_nr = get_cardinal_prop(ps, ps->root, "_NET_CURRENT_DESKTOP");
+		if (!desktop_switch &&
+		    (previous_desk_nr != desktop_nr || client_desktop_nr != desktop_nr)) { // desktop changed
+
+			if (previous_desk_nr != desktop_nr)
+				desktop_switch = (previous_desk_nr < desktop_nr) ? 1 : -1;
+			else
+				desktop_switch = (client_desktop_nr < desktop_nr) ? 1 : -1;
+
+			// make desks cyclic
+			if (desktop_switch < 0 && desktop_nr == 0 && previous_desk_nr > 1)
+				desktop_switch = 1;
+			else if (desktop_switch > 0 && previous_desk_nr == 0 && desktop_nr == desktop_count-1)
+				desktop_switch = -1;
+			log_info("+++++++tag change %d", desktop_switch);
+		}
+		log_info("[%x] Desk: %d (prev=%d) , Client: %d", w->client_win,
+		         desktop_nr, previous_desk_nr, client_desktop_nr);
+		previous_desk_nr = desktop_nr;
+	}
+	/* end of desktop slide animation code */
+
+	if (!transient_window && desktop_switch && client_desktop_nr < desktop_count) {        // introspect that
+		if (desktop_switch > 0) {
+			animation = (w->animation_flags & ANIM_UNMAP) ? OPEN_WINDOW_ANIMATION_SLIDE_RIGHT : OPEN_WINDOW_ANIMATION_SLIDE_LEFT;
+		} else {
+			animation = (w->animation_flags & ANIM_UNMAP) ? OPEN_WINDOW_ANIMATION_SLIDE_LEFT: OPEN_WINDOW_ANIMATION_SLIDE_RIGHT;
+		}
+	}
 	double angle;
 	switch (animation) {
 	case OPEN_WINDOW_ANIMATION_NONE:        // No animation
@@ -550,38 +592,34 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		*anim_w = 0;
 		*anim_h = 0;
 		break;
-	case OPEN_WINDOW_ANIMATION_SLIDE_UP:        // Slide up the image, without
-	                                            // changing its location
+	case OPEN_WINDOW_ANIMATION_SLIDE_UP:        // Slide up the image
 		*anim_x = w->pending_g.x + w->pending_g.width * 0.5;
 		*anim_y = w->pending_g.y + w->pending_g.height;
 		*anim_w = w->pending_g.width;
 		*anim_h = 0;
 		break;
-	case OPEN_WINDOW_ANIMATION_SLIDE_DOWN:        // Slide down the image, without
-	                                              // changing its location
+	case OPEN_WINDOW_ANIMATION_SLIDE_DOWN:        // Slide down the image
 		*anim_x = w->pending_g.x + w->pending_g.width * 0.5;
 		*anim_y = w->pending_g.y;
 		*anim_w = w->pending_g.width;
 		*anim_h = 0;
 		break;
-	case OPEN_WINDOW_ANIMATION_SLIDE_LEFT:        // Slide left the image, without
-	                                              // changing its location
-		*anim_x = w->pending_g.x + w->pending_g.width;
-		*anim_y = w->pending_g.y + w->pending_g.height * 0.5;
-		*anim_w = 0;
+	case OPEN_WINDOW_ANIMATION_SLIDE_LEFT:        // Slide left the image
+		*anim_x = w->pending_g.x + w->pending_g.width * 0.5 + (randr_mon_center_x);
+		*anim_w = w->pending_g.width;
 		*anim_h = w->pending_g.height;
+		*anim_y = w->pending_g.y + w->pending_g.height * 0.5;
 		break;
-	case OPEN_WINDOW_ANIMATION_SLIDE_RIGHT:        // Slide right the image, without
-	                                               // changing its location
-		*anim_x = w->pending_g.x;
-		*anim_y = w->pending_g.y + w->pending_g.height * 0.5;
-		*anim_w = 0;
+	case OPEN_WINDOW_ANIMATION_SLIDE_RIGHT:        // Slide right the image
+		*anim_x = w->pending_g.x + w->pending_g.width * 0.5 - (randr_mon_center_x);
+		*anim_w = w->pending_g.width;
 		*anim_h = w->pending_g.height;
+		*anim_y = w->pending_g.y + w->pending_g.height * 0.5;
 		break;
 	case OPEN_WINDOW_ANIMATION_SLIDE_IN:
-		w->animation_center_x = w->pending_g.x + w->pending_g.width * 0.5;
-		w->animation_w = w->pending_g.width;
-		w->animation_h = w->pending_g.height;
+		*anim_x = w->pending_g.x + w->pending_g.width * 0.5;
+		*anim_w = w->pending_g.width;
+		*anim_h = w->pending_g.height;
 		*anim_y = w->pending_g.y;
 		break;
 	case OPEN_WINDOW_ANIMATION_SLIDE_IN_CENTER:
@@ -591,16 +629,16 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		*anim_h = w->pending_g.height;
 		break;
 	case OPEN_WINDOW_ANIMATION_SLIDE_OUT:
-		w->animation_dest_center_x = w->pending_g.x + w->pending_g.width * 0.5;
-		w->animation_dest_center_y = w->pending_g.y + w->heightb;
-		w->animation_dest_w = w->pending_g.width;
-		w->animation_dest_h = w->pending_g.height;
+		*anim_x = w->pending_g.x + w->pending_g.width * 0.5;
+		*anim_y = w->pending_g.y + w->heightb;
+		*anim_w = w->pending_g.width;
+		*anim_h = w->pending_g.height;
 		break;
 	case OPEN_WINDOW_ANIMATION_SLIDE_OUT_CENTER:
-		w->animation_dest_center_x = randr_mon_center_x;
-		w->animation_dest_center_y = w->pending_g.y;
-		w->animation_dest_w = w->pending_g.width;
-		w->animation_dest_h = w->pending_g.height;
+		*anim_x = randr_mon_center_x;
+		*anim_y = w->pending_g.y;
+		*anim_w = w->pending_g.width;
+		*anim_h = w->pending_g.height;
 		break;
 	case OPEN_WINDOW_ANIMATION_ZOOM:        // Zoom-in the image, without changing its
 	                                        // location
@@ -622,11 +660,10 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		*anim_h = 0;
 		break;
 	case OPEN_WINDOW_ANIMATION_SQUEEZE_BOTTOM:
-		w->animation_center_x = w->pending_g.x + w->pending_g.width * 0.5;
-		w->animation_center_y = w->pending_g.y + w->pending_g.height;
-		w->animation_w = w->pending_g.width;
-		*anim_h = 0;
+		*anim_x = w->pending_g.x + w->pending_g.width * 0.5;
 		*anim_y = w->pending_g.y + w->pending_g.height;
+		*anim_w = w->pending_g.width;
+		*anim_h = 0;
 		break;
 	case OPEN_WINDOW_ANIMATION_INVALID: assert(false); break;
 	}
@@ -962,6 +999,60 @@ static wintype_t wid_get_prop_wintype(session_t *ps, xcb_window_t wid) {
 
 	return WINTYPE_UNKNOWN;
 }
+/* FIXME: I couldn't do it using the provided functions so it's direct xcb calls */
+winprop_t x_get_cardinal_prop(xcb_connection_t *c, xcb_window_t w, xcb_atom_t atom) {
+	xcb_get_property_cookie_t cookie =
+	    xcb_get_property(c, 0, w, atom, XCB_ATOM_CARDINAL, 0, 1);
+	xcb_get_property_reply_t *reply = xcb_get_property_reply(c, cookie, NULL);
+
+	if (reply && reply->format == 32 && reply->type == XCB_ATOM_CARDINAL &&
+	    xcb_get_property_value_length(reply) >= sizeof(uint32_t)) {
+		uint32_t *val = (uint32_t *)xcb_get_property_value(reply);
+		return (winprop_t){.ptr = val,
+		                   .nitems = 1,
+		                   .type = reply->type,
+		                   .format = reply->format,
+		                   .r = reply};
+	}
+
+	free(reply);
+	return (winprop_t){.ptr = NULL, .nitems = 0, .type = XCB_ATOM_NONE, .format = 0};
+}
+int get_cardinal_prop(session_t *ps, xcb_window_t wid, const char *atomName) {
+	int ret = -1;
+	xcb_intern_atom_cookie_t atom_cookie =
+	    xcb_intern_atom(ps->c, 0, strlen(atomName), atomName);
+	xcb_intern_atom_reply_t *atom_reply = xcb_intern_atom_reply(ps->c, atom_cookie, NULL);
+
+	if (atom_reply) {
+		xcb_atom_t atom = atom_reply->atom;
+		free(atom_reply);
+
+		// now use the atom to retrieve the property
+		winprop_t prop = x_get_cardinal_prop(ps->c, wid, atom);
+
+		if (prop.ptr) {
+			ret = *(int *)prop.ptr;
+		}
+
+		free_winprop(&prop);
+	}
+	return ret;
+}
+
+bool get_mouse_position(session_t *ps, int16_t *x, int16_t *y) {
+	xcb_query_pointer_cookie_t cookie = xcb_query_pointer(ps->c, ps->root);
+	xcb_query_pointer_reply_t *reply = xcb_query_pointer_reply(ps->c, cookie, NULL);
+	if (reply) {
+		*x = reply->root_x;
+		*y = reply->root_y;
+		free(reply);
+		return true;
+	}
+	return false;
+}
+
+/* End of xcb functions */
 
 static bool
 wid_get_opacity_prop(session_t *ps, xcb_window_t wid, opacity_t def, opacity_t *out) {
@@ -2712,6 +2803,8 @@ bool win_check_fade_finished(session_t *ps, struct managed_win *w) {
 		return false;
 	}
 	if (w->opacity == w->opacity_target) {
+		log_info("-------tag change %x", w->client_win);
+		desktop_switch = 0;
 		switch (w->state) {
 		case WSTATE_UNMAPPING: unmap_win_finish(ps, w); return false;
 		case WSTATE_DESTROYING: destroy_win_finish(ps, &w->base); return true;
