@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2011-2013, Christopher Jeffrey
 // Copyright (c) 2013 Richard Grenville <pyxlcy@gmail.com>
+
+//Change this to a config
+#define SPECIAL_DESKTOP_COUNT 3
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <inttypes.h>
@@ -535,7 +538,7 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 
 	/* TODO(fab): make this optional (slide-animation: true) */
 
-	const int desktop_count = 10;        // TODO: use _NET_NUMBER_OF_DESKTOPS-configItem
+	const int desktop_count = get_cardinal_prop(ps, ps->root, "_NET_NUMBER_OF_DESKTOPS") - SPECIAL_DESKTOP_COUNT; 
 	int client_desktop_nr = get_cardinal_prop(ps, w->client_win, "_NET_WM_DESKTOP");
 
 	if (client_desktop_nr >= 0 && !transient_window &&
