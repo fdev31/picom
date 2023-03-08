@@ -273,6 +273,9 @@ typedef struct session {
 	/// Time of last window animation step. In milliseconds.
 	long animation_time;        // TODO(dccsillag) turn into `long long`, like
 	                            // fade_time
+	int animation_mode; // special "full screen" animations modes
+	int previous_desk_nr; // allows tracking of desktop changes
+						  // should probaby be an array for each screen
 	/// Head pointer of the error ignore linked list.
 	pending_reply_t *pending_reply_head;
 	/// Pointer to the <code>next</code> member of tail element of the error

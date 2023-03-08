@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2011-2013, Christopher Jeffrey
 // Copyright (c) 2013 Richard Grenville <pyxlcy@gmail.com>
-int desktop_switch = 0; // TODO: move it in session
-
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <inttypes.h>
@@ -480,7 +478,6 @@ static void win_update_properties(session_t *ps, struct managed_win *w) {
 }
 
 static void init_animation(session_t *ps, struct managed_win *w) {
-	static int previous_desk_nr = -1;
 	CLEAR_MASK(w->in_desktop_animation)
 	static int32_t randr_mon_center_x, randr_mon_center_y;
 	if (w->randr_monitor == -1) {
@@ -536,7 +533,7 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		anim_w = &w->animation_w, anim_h = &w->animation_h;
 	}
 
-	/* TODO: make this optional (slide-animation: true) */
+	/* TODO(fab): make this optional (slide-animation: true) */
 
 	const int desktop_count = 10;        // TODO: use _NET_NUMBER_OF_DESKTOPS-configItem
 	int client_desktop_nr = get_cardinal_prop(ps, w->client_win, "_NET_WM_DESKTOP");
@@ -544,29 +541,29 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 	if (client_desktop_nr >= 0 && !transient_window &&
 	    w->window_type == WINTYPE_NORMAL && !w->in_desktop_animation) {
 		int desktop_nr = get_cardinal_prop(ps, ps->root, "_NET_CURRENT_DESKTOP");
-		if (!desktop_switch &&
-		    (previous_desk_nr != desktop_nr || client_desktop_nr != desktop_nr)) { // desktop changed
+		if (!ps->animation_mode &&
+		    (ps->previous_desk_nr != desktop_nr || client_desktop_nr != desktop_nr)) { // desktop changed
 
-			if (previous_desk_nr != desktop_nr)
-				desktop_switch = (previous_desk_nr < desktop_nr) ? 1 : -1;
+			if (ps->previous_desk_nr != desktop_nr)
+				ps->animation_mode |= (ps->previous_desk_nr < desktop_nr) ? ANIM_DESK_SWITCH_LEFT : ANIM_DESK_SWITCH_RIGHT;
 			else
-				desktop_switch = (client_desktop_nr < desktop_nr) ? 1 : -1;
+				ps->animation_mode |= (client_desktop_nr < desktop_nr) ? ANIM_DESK_SWITCH_LEFT : ANIM_DESK_SWITCH_RIGHT;
 
 			// make desks cyclic
-			if (desktop_switch < 0 && desktop_nr == 0 && previous_desk_nr > 1)
-				desktop_switch = 1;
-			else if (desktop_switch > 0 && previous_desk_nr == 0 && desktop_nr == desktop_count-1)
-				desktop_switch = -1;
-			log_info("+++++++tag change %d", desktop_switch);
+			if (ps->animation_mode & ANIM_DESK_SWITCH_RIGHT && desktop_nr == 0 && ps->previous_desk_nr > 1)
+				ps->animation_mode |= ANIM_DESK_SWITCH_LEFT;
+			else if (ps->animation_mode & ANIM_DESK_SWITCH_LEFT && ps->previous_desk_nr == 0 && desktop_nr == desktop_count-1)
+				ps->animation_mode |= ANIM_DESK_SWITCH_RIGHT;
+			log_info("+++++++tag change %d", ps->animation_mode);
 		}
 		log_info("[%x] Desk: %d (prev=%d) , Client: %d", w->client_win,
-		         desktop_nr, previous_desk_nr, client_desktop_nr);
-		previous_desk_nr = desktop_nr;
+		         desktop_nr, ps->previous_desk_nr, client_desktop_nr);
+		ps->previous_desk_nr = desktop_nr;
 	}
 	/* end of desktop slide animation code */
 
-	if (!transient_window && desktop_switch && client_desktop_nr < desktop_count) {        // introspect that
-		if (desktop_switch > 0) {
+	if (!transient_window && ps->animation_mode && client_desktop_nr < desktop_count) {        // introspect that
+		if (ps->animation_mode & ANIM_DESK_SWITCH_LEFT) {
 			animation = (w->animation_flags & ANIM_UNMAP) ? OPEN_WINDOW_ANIMATION_SLIDE_RIGHT : OPEN_WINDOW_ANIMATION_SLIDE_LEFT;
 		} else {
 			animation = (w->animation_flags & ANIM_UNMAP) ? OPEN_WINDOW_ANIMATION_SLIDE_LEFT: OPEN_WINDOW_ANIMATION_SLIDE_RIGHT;
@@ -2804,7 +2801,7 @@ bool win_check_fade_finished(session_t *ps, struct managed_win *w) {
 	}
 	if (w->opacity == w->opacity_target) {
 		log_info("-------tag change %x", w->client_win);
-		desktop_switch = 0;
+		ps->animation_mode = 0;
 		switch (w->state) {
 		case WSTATE_UNMAPPING: unmap_win_finish(ps, w); return false;
 		case WSTATE_DESTROYING: destroy_win_finish(ps, &w->base); return true;

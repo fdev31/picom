@@ -101,6 +101,9 @@ struct win_geometry {
 };
 
 enum {
+	// animation modes (whole desk)
+	ANIM_DESK_SWITCH_LEFT = 1,
+	ANIM_DESK_SWITCH_RIGHT = (1<<1),
 	// animation_flags
 	ANIM_UNMAP = 1,
 	// in_desktop_animation
