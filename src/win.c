@@ -548,16 +548,18 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		if (!ps->animation_mode &&
 		    (ps->previous_desk_nr != desktop_nr || client_desktop_nr != desktop_nr)) { // desktop changed
 
-			if (ps->previous_desk_nr != desktop_nr)
+			if (ps->previous_desk_nr != desktop_nr) {
 				ps->animation_mode |= (ps->previous_desk_nr < desktop_nr) ? ANIM_DESK_SWITCH_LEFT : ANIM_DESK_SWITCH_RIGHT;
-			else
+			} else {
 				ps->animation_mode |= (client_desktop_nr < desktop_nr) ? ANIM_DESK_SWITCH_LEFT : ANIM_DESK_SWITCH_RIGHT;
+			}
 
 			// make desks cyclic
-			if (ps->animation_mode & ANIM_DESK_SWITCH_RIGHT && desktop_nr == 0 && ps->previous_desk_nr > 1)
+			if (ps->animation_mode & ANIM_DESK_SWITCH_RIGHT && desktop_nr == 0 && ps->previous_desk_nr > 1) {
 				ps->animation_mode |= ANIM_DESK_SWITCH_LEFT;
-			else if (ps->animation_mode & ANIM_DESK_SWITCH_LEFT && ps->previous_desk_nr == 0 && desktop_nr == desktop_count-1)
+			} else if (ps->animation_mode & ANIM_DESK_SWITCH_LEFT && ps->previous_desk_nr == 0 && desktop_nr == desktop_count-1) {
 				ps->animation_mode |= ANIM_DESK_SWITCH_RIGHT;
+			}
 			log_info("+++++++tag change %d", ps->animation_mode);
 		}
 		log_info("[%x] Desk: %d (prev=%d) , Client: %d", w->client_win,
@@ -2804,7 +2806,7 @@ bool win_check_fade_finished(session_t *ps, struct managed_win *w) {
 		return false;
 	}
 	if (w->opacity == w->opacity_target) {
-		log_info("-------tag change %x", w->client_win);
+		log_info("-------tag change %x  /// %d  /// %d", w->client_win, ps->animation_time, ps->animation_timer);
 		ps->animation_mode = 0;
 		switch (w->state) {
 		case WSTATE_UNMAPPING: unmap_win_finish(ps, w); return false;
