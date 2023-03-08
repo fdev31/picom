@@ -516,8 +516,9 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 			int16_t mx, my;
 			animation = OPEN_WINDOW_ANIMATION_SLIDE_DOWN; //ps->o.animation_for_transient_window;
 			if (get_mouse_position(ps, &mx, &my)) {
-				if (my >= (randr_mon_center_y*2) - w->pending_g.height)
+				if (my >= (randr_mon_center_y*2) - w->pending_g.height) {
 					animation = OPEN_WINDOW_ANIMATION_SLIDE_UP;
+				}
 			}
 		} else {
 			if (w->animation_flags & ANIM_UNMAP) {
