@@ -189,6 +189,9 @@ static const struct picom_option picom_options[] = {
     {"animation-clamping"          , no_argument      , 809, NULL          , "Enable/disable animation clamping. Disabling increases performance"},
     {"animation-for-open-window"   , required_argument, 810, NULL          , "Set animation for opening window (Check sample.conf for options)."},
     {"animation-for-transient-window", required_argument, 811, NULL        , "Set animation for transient (child) windows."},
+    // blacklist ??
+    {"animation-for-tag-change", required_argument, 813, NULL        , "Set animation for switching desktops."},
+    {"animation-extra-desktops", required_argument, 814, NULL        , "N desktops will not be considered as standard desktops (useful for some window managers)."},
 };
 // clang-format on
 
@@ -790,6 +793,26 @@ bool get_cfg(options_t *opt, int argc, char *const *argv, bool shadow_enable,
 		case 812: {
 			// --animation-exclude
 			condlst_add(&opt->animation_blacklist, optarg);
+			break;
+		}
+		case 813: {
+			// --animation-for-tag-change
+			enum open_window_animation animation = parse_open_window_animation(optarg);
+			if (animation >= OPEN_WINDOW_ANIMATION_INVALID) {
+				log_warn("Invalid tag-change animation %s, ignoring.", optarg);
+			} else {
+				if (animation == OPEN_WINDOW_ANIMATION_SLIDE_RIGHT) {
+					animation = OPEN_WINDOW_ANIMATION_SLIDE_LEFT;
+				}
+				if (animation == OPEN_WINDOW_ANIMATION_SLIDE_DOWN) {
+					animation = OPEN_WINDOW_ANIMATION_SLIDE_UP;
+				}
+				opt->animation_for_tag_change = animation;
+			}
+			break;
+		}
+		case 814: {
+			opt->animation_extra_desktops = atoi(optarg);
 			break;
 		}
 		default: usage(argv[0], 1); break;

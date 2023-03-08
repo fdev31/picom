@@ -203,6 +203,8 @@ typedef struct options {
 	enum open_window_animation animation_for_unmap_window;
 	/// Which animation to run when swapping to new tag
 	enum open_window_animation animation_for_tag_change;
+	/// number of desktops to strip at the end of the list
+	int animation_extra_desktops;
 	/// Spring stiffness for animation
 	double animation_stiffness;
 	/// Spring stiffness for current tag animation

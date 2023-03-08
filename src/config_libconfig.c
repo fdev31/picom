@@ -449,6 +449,15 @@ char *parse_config_libconfig(options_t *opt, const char *config_file, bool *shad
 	// --unredir-if-possible
 	lcfg_lookup_bool(&cfg, "unredir-if-possible", &opt->unredir_if_possible);
 	// --unredir-if-possible-delay
+	if (config_lookup_int(&cfg, "animation-extra-desktops", &ival)) {
+		if (ival < 0) {
+			log_warn("Invalid animation-extra-desktops %d", ival);
+		} else {
+			opt->animation_extra_desktops = ival;
+		}
+	}
+
+	// --unredir-if-possible-delay
 	if (config_lookup_int(&cfg, "unredir-if-possible-delay", &ival)) {
 		if (ival < 0) {
 			log_warn("Invalid unredir-if-possible-delay %d", ival);
@@ -531,6 +540,8 @@ char *parse_config_libconfig(options_t *opt, const char *config_file, bool *shad
 	config_lookup_float(&cfg, "animation-window-mass", &opt->animation_window_mass);
 	// --animation-dampening
 	config_lookup_float(&cfg, "animation-dampening", &opt->animation_dampening);
+	// --animation-extra-desktops
+	config_lookup_int(&cfg, "animation-extra-desktops", &opt->animation_extra_desktops);
 	// --animation-clamping
 	lcfg_lookup_bool(&cfg, "animation-clamping", &opt->animation_clamping);
 	// --focus-exclude

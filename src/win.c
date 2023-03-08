@@ -3,7 +3,6 @@
 // Copyright (c) 2013 Richard Grenville <pyxlcy@gmail.com>
 
 //Change this to a config
-#define SPECIAL_DESKTOP_COUNT 3
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <inttypes.h>
@@ -537,42 +536,51 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 		anim_w = &w->animation_w, anim_h = &w->animation_h;
 	}
 
-	/* TODO(fab): make this optional (slide-animation: true) */
-
-	const int desktop_count = get_cardinal_prop(ps, ps->root, "_NET_NUMBER_OF_DESKTOPS") - SPECIAL_DESKTOP_COUNT; 
+	const int desktop_count = get_cardinal_prop(ps, ps->root, "_NET_NUMBER_OF_DESKTOPS") - ps->o.animation_extra_desktops; 
 	int client_desktop_nr = get_cardinal_prop(ps, w->client_win, "_NET_WM_DESKTOP");
 
-	if (client_desktop_nr >= 0 && !transient_window &&
-	    w->window_type == WINTYPE_NORMAL && !w->in_desktop_animation) {
-		int desktop_nr = get_cardinal_prop(ps, ps->root, "_NET_CURRENT_DESKTOP");
-		if (!ps->animation_mode &&
-		    (ps->previous_desk_nr != desktop_nr || client_desktop_nr != desktop_nr)) { // desktop changed
+	if (ps->o.animation_for_tag_change != OPEN_WINDOW_ANIMATION_NONE) {
 
-			if (ps->previous_desk_nr != desktop_nr) {
-				ps->animation_mode |= (ps->previous_desk_nr < desktop_nr) ? ANIM_DESK_SWITCH_LEFT : ANIM_DESK_SWITCH_RIGHT;
-			} else {
-				ps->animation_mode |= (client_desktop_nr < desktop_nr) ? ANIM_DESK_SWITCH_LEFT : ANIM_DESK_SWITCH_RIGHT;
-			}
+		if (client_desktop_nr >= 0 && !transient_window &&
+				w->window_type == WINTYPE_NORMAL && !w->in_desktop_animation) {
+			int desktop_nr = get_cardinal_prop(ps, ps->root, "_NET_CURRENT_DESKTOP");
+			if (!ps->animation_mode &&
+					(ps->previous_desk_nr != desktop_nr || client_desktop_nr != desktop_nr)) { // desktop changed
 
-			// make desks cyclic
-			if (ps->animation_mode & ANIM_DESK_SWITCH_RIGHT && desktop_nr == 0 && ps->previous_desk_nr == desktop_count-1) {
-				ps->animation_mode |= ANIM_DESK_SWITCH_LEFT;
-			} else if (ps->animation_mode & ANIM_DESK_SWITCH_LEFT && ps->previous_desk_nr == 0 && desktop_nr == desktop_count-1) {
-				ps->animation_mode |= ANIM_DESK_SWITCH_RIGHT;
+				if (ps->previous_desk_nr != desktop_nr) {
+					ps->animation_mode |= (ps->previous_desk_nr < desktop_nr) ? ANIM_DESK_SWITCH_LEFT : ANIM_DESK_SWITCH_RIGHT;
+				} else {
+					ps->animation_mode |= (client_desktop_nr < desktop_nr) ? ANIM_DESK_SWITCH_LEFT : ANIM_DESK_SWITCH_RIGHT;
+				}
+				log_info("extra = %d", desktop_count);
+
+				// make desks cyclic
+				if (ps->animation_mode & ANIM_DESK_SWITCH_RIGHT && desktop_nr == 0 && ps->previous_desk_nr == desktop_count-1) {
+					ps->animation_mode |= ANIM_DESK_SWITCH_LEFT;
+				} else if (ps->animation_mode & ANIM_DESK_SWITCH_LEFT && ps->previous_desk_nr == 0 && desktop_nr == desktop_count-1) {
+					ps->animation_mode |= ANIM_DESK_SWITCH_RIGHT;
+				}
+				log_info("+++++++tag change %d", ps->animation_mode);
 			}
-			log_info("+++++++tag change %d", ps->animation_mode);
+			log_info("[%x] Desk: %d (prev=%d) , Client: %d", w->client_win,
+					desktop_nr, ps->previous_desk_nr, client_desktop_nr);
+			ps->previous_desk_nr = desktop_nr;
 		}
-		log_info("[%x] Desk: %d (prev=%d) , Client: %d", w->client_win,
-		         desktop_nr, ps->previous_desk_nr, client_desktop_nr);
-		ps->previous_desk_nr = desktop_nr;
 	}
-	/* end of desktop slide animation code */
 
 	if (!transient_window && ps->animation_mode && client_desktop_nr < desktop_count) {        // introspect that
 		if (ps->animation_mode & ANIM_DESK_SWITCH_LEFT) {
-			animation = (w->animation_flags & ANIM_UNMAP) ? OPEN_WINDOW_ANIMATION_SLIDE_RIGHT : OPEN_WINDOW_ANIMATION_SLIDE_LEFT;
+			if (ps->o.animation_for_tag_change == OPEN_WINDOW_ANIMATION_SLIDE_LEFT) {
+				animation = (w->animation_flags & ANIM_UNMAP) ? OPEN_WINDOW_ANIMATION_SLIDE_RIGHT : OPEN_WINDOW_ANIMATION_SLIDE_LEFT;
+			} else {
+				animation = (w->animation_flags & ANIM_UNMAP) ? OPEN_WINDOW_ANIMATION_SLIDE_DOWN: OPEN_WINDOW_ANIMATION_SLIDE_UP;
+			}
 		} else {
-			animation = (w->animation_flags & ANIM_UNMAP) ? OPEN_WINDOW_ANIMATION_SLIDE_LEFT: OPEN_WINDOW_ANIMATION_SLIDE_RIGHT;
+			if (ps->o.animation_for_tag_change == OPEN_WINDOW_ANIMATION_SLIDE_LEFT) {
+				animation = (w->animation_flags & ANIM_UNMAP) ? OPEN_WINDOW_ANIMATION_SLIDE_LEFT: OPEN_WINDOW_ANIMATION_SLIDE_RIGHT;
+			} else {
+				animation = (w->animation_flags & ANIM_UNMAP) ? OPEN_WINDOW_ANIMATION_SLIDE_UP: OPEN_WINDOW_ANIMATION_SLIDE_UP;
+			}
 		}
 	}
 	double angle;
