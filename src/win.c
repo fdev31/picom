@@ -555,7 +555,7 @@ static void init_animation(session_t *ps, struct managed_win *w) {
 			}
 
 			// make desks cyclic
-			if (ps->animation_mode & ANIM_DESK_SWITCH_RIGHT && desktop_nr == 0 && ps->previous_desk_nr > 1) {
+			if (ps->animation_mode & ANIM_DESK_SWITCH_RIGHT && desktop_nr == 0 && ps->previous_desk_nr == desktop_count-1) {
 				ps->animation_mode |= ANIM_DESK_SWITCH_LEFT;
 			} else if (ps->animation_mode & ANIM_DESK_SWITCH_LEFT && ps->previous_desk_nr == 0 && desktop_nr == desktop_count-1) {
 				ps->animation_mode |= ANIM_DESK_SWITCH_RIGHT;
